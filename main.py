@@ -4,6 +4,11 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, engine, Base
 from models import EmailRecord
 from nlp_model import classify_email_ml
+from email_fetcher import fetch_emails
+import os
+from dotenv import load_dotenv
+
+load_dotenv() 
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
@@ -69,3 +74,37 @@ def get_emails():
     db = SessionLocal()
     emails = db.query(EmailRecord).all()
     return emails
+
+@app.post("/scan-inbox")
+def scan_inbox():
+    username = os.getenv("EMAIL_USER")
+    password = os.getenv("EMAIL_PASS")
+
+    emails = fetch_emails(username, password, limit=10)
+    results = []
+
+    for email_data in emails:
+        category = classify_email_ml(email_data["body"])
+        priority = detect_priority(email_data["body"])
+        summary = summarize(email_data["body"])
+
+        db = SessionLocal()
+
+        record = EmailRecord(
+            subject = email_data["subject"],
+            body = email_data["body"],
+            category = category,
+            priority = priority,
+            summary = summary
+        )
+        
+        db.add(record)
+        db.commit()
+
+        results.append({
+            "subject": email_data["subject"],
+            "category": category,
+            "priority": priority
+        })
+
+    return {"processed_emails": results}
