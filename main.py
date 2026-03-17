@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine, Base
 from models import EmailRecord
+from nlp_model import classify_email_ml
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
@@ -42,7 +43,7 @@ def analyze_email(email: Email):
 
     db = SessionLocal()
 
-    category = classify_email(email.body)
+    category = classify_email_ml(email.body)
     priority = detect_priority(email.body)
     summary = summarize(email.body)
 
