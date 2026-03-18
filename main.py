@@ -75,6 +75,16 @@ def get_emails():
     emails = db.query(EmailRecord).all()
     return emails
 
+@app.delete("/emails")
+def delete_emails():
+    db = SessionLocal()
+    deleted = db.query(EmailRecord).delete()
+    db.commit()
+    return {
+    "message": "All emails deleted",
+    "deleted_emails": deleted
+}
+
 @app.post("/scan-inbox")
 def scan_inbox():
     username = os.getenv("EMAIL_USER")
@@ -108,3 +118,21 @@ def scan_inbox():
         })
 
     return {"processed_emails": results}
+
+@app.get("/stats")
+def get_stats():
+
+    db = SessionLocal()
+    total_emails = db.query(EmailRecord).count()
+    high_priority = db.query(EmailRecord).filter(EmailRecord.priority == "high").count()
+    categories = db.query(EmailRecord.category).all()
+    category_counts = {}
+    for c in categories:
+        category = c[0]
+        category_counts[category] = category_counts.get(category, 0) + 1
+
+    return {
+        "total_emails": total_emails,
+        "high_priority_emails": high_priority,
+        "categories": category_counts
+    }
